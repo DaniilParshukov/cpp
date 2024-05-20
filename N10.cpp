@@ -1,41 +1,42 @@
 #include <iostream>
 
-template <typename Derived>
+template <typename Derived, int N = 1>
 struct Counter {
 private:
     static int objects_created;
 
 public:
     Counter() {
-        if (objects_created++ >= 5) {
+        if (objects_created++ >= N) {
             throw "Too many classes created";
         }
     }
 
     Counter(const Counter&) {
-        if (objects_created++ >= 5) {
+        if (objects_created++ >= N) {
             throw "Too many classes created";
         }
     }
 };
 
 
-class Exemple: public Counter<Exemple> {
+class Example: public Counter<Example, 5> {
 public:
-    Exemple(): Counter() {}
+    Example(): Counter<Example, 5>() {}
 
     void print() {
-        std::cout << "exemple.print" << std::endl;
+        std::cout << "example.print" << std::endl;
     }
-};
+}; 
 
-template<>
-int Counter<Exemple>::objects_created = 0;
+template<typename Derived, int N>
+int Counter<Derived, N>::objects_created = 0;
+
 
 int main() {
     try {
         for (int i = 0; i < 10; i++) {
-            (new Exemple())->print();
+            (new Example())->print();
         }
     } catch (const char* message) {
         std::cout << "Exception: " << message << std::endl;

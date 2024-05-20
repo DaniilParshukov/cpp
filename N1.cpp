@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert>
+#include <unordered_map>
 
 class Node {
     int val;
@@ -9,10 +10,9 @@ class Node {
     Node* left;
     Node* right;
 
-private:
     void update() {
-        this->c = 1 + (this->right ? this->right->c : 0) + (this->left ? this->left->c : 0);
-        this->sum = this->val + (this->right ? this->right->sum : 0) + (this->left ? this->left->sum : 0);
+        c = 1 + (right ? right->c : 0) + (left ? left->c : 0);
+        sum = val + (right ? right->sum : 0) + (left ? left->sum : 0);
     }
 
     Node* merge(Node* t1, Node* t2) {
@@ -30,21 +30,21 @@ private:
     }
    
     std::tuple<Node*, Node*> splitBySize(int k) {
-        int lc = (this->left ? this->left->c : 0);
+        int lc = (left ? left->c : 0);
         if (k <= lc) {
-            if (this->left) {
-                std::tuple<Node*, Node*> tl = this->left->splitBySize(k);
-                this->left = std::get<1>(tl);
-                this->update();
+            if (left) {
+                std::tuple<Node*, Node*> tl = left->splitBySize(k);
+                left = std::get<1>(tl);
+                update();
                 return std::tuple<Node*, Node*> {std::get<0>(tl), this};
             } else {
                 return std::tuple<Node*, Node*> {nullptr, this};
             }
         } else {
-            if (this->right) {
-                std::tuple<Node*, Node*> tr = this->right->splitBySize(k - lc - 1);
-                this->right = std::get<0>(tr);
-                this->update();
+            if (right) {
+                std::tuple<Node*, Node*> tr = right->splitBySize(k - lc - 1);
+                right = std::get<0>(tr);
+                update();
                 return std::tuple<Node*, Node*> {this, std::get<1>(tr)};
             } else {
                 return std::tuple<Node*, Node*> {this, nullptr};
@@ -53,38 +53,38 @@ private:
     }
 
 public:
-    Node(int val) {
+    Node(int val, int pri) {
         this->val = val;
         c = 1;
         sum = val;
-        pri = rand() % 100000;
+        this->pri = pri;
         left = nullptr;
         right = nullptr;
     }
 
-    Node* insert(int val, int pos) {
-        if (pos > this->c or pos < 0) {
-            pos = this->c;
+    Node* insert(int val, int pri, int pos) {
+        if (pos > c or pos < 0) {
+            pos = c;
         }
-        std::tuple<Node*, Node*> tt = this->splitBySize(pos);
-        Node* t2 = new Node(val);
+        std::tuple<Node*, Node*> tt = splitBySize(pos);
+        Node* t2 = new Node(val, pri);
         return merge(merge(std::get<0>(tt), t2), std::get<1>(tt));
     }
 
     Node* get(int pos) {
-        int lc = (this->left ? this->left->c : 0);
+        int lc = (left ? left->c : 0);
         if (pos == lc) {
             return this;
         }
         if (pos < lc) {
-            return this->left->get(pos);
+            return left->get(pos);
         } else  {
-            return this->right->get(pos);
+            return right->get(pos);
         }
     }
 
     Node* erase(int pos) {
-        std::tuple<Node*, Node*> t = this->splitBySize(pos);
+        std::tuple<Node*, Node*> t = splitBySize(pos);
         if (std::get<1>(t)) {
             std::tuple<Node*, Node*> tr = std::get<1>(t)->splitBySize(1);
             return merge(std::get<0>(t), std::get<1>(tr));
@@ -93,7 +93,7 @@ public:
     }
 
     Node* eraseRegion(int pos, int count) {
-        std::tuple<Node*, Node*> t = this->splitBySize(pos);
+        std::tuple<Node*, Node*> t = splitBySize(pos);
         if (std::get<1>(t)) {
             std::tuple<Node*, Node*> tr = std::get<1>(t)->splitBySize(count);
             return merge(std::get<0>(t), std::get<1>(tr));
@@ -102,7 +102,7 @@ public:
     }
 
     int sumInterval(int f, int t) {
-        std::tuple<Node*, Node*> tn = this->splitBySize(f);
+        std::tuple<Node*, Node*> tn = splitBySize(f);
         if (std::get<1>(tn)) {
             std::tuple<Node*, Node*> tnr = std::get<1>(tn)->splitBySize(t - f + 1);
             return std::get<0>(tnr)->sum;
@@ -114,6 +114,7 @@ public:
 
 class Treap {
     Node* root;
+    std::unordered_map<int, bool> priMap;
 
 public:
     Treap() {
@@ -121,10 +122,18 @@ public:
     }
     
     void insert(int val, int pos) {
+        int pri = -1;
+        while(pri != -1) {
+            int r = rand() % 100000;
+            if (priMap.find(r) == priMap.end()) {
+                priMap[r] = true;
+                pri = r;
+            }
+        }
         if (root) {
-            root = root->insert(val, pos);
+            root = root->insert(val, pri, pos);
         } else {
-            root = new Node(val);
+            root = new Node(val, pri);
         }
     }
 

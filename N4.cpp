@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert>
+#include <unordered_map>
 
 class Node {
     int val_;
@@ -10,7 +11,7 @@ class Node {
     Node* right_;
 
 public:
-    Node(int v): val_(v), c_(1), sum_(v), pri_(rand() % 100000), left_(nullptr), right_(nullptr) {}
+    Node(int val, int pri): val_(val), c_(1), sum_(val), pri_(pri), left_(nullptr), right_(nullptr) {}
 
     Node(const Node& other): val_(other.val_), c_(other.c_), sum_(other.sum_), pri_(other.pri_) {
         if (other.left_) {
@@ -46,29 +47,29 @@ public:
     }
 
 
-    Node* insert(int val_, int pos) {
-        if (pos > this->c_ or pos < 0) {
-            pos = this->c_;
+    Node* insert(int val, int pri, int pos) {
+        if (pos > c_ or pos < 0) {
+            pos = c_;
         }
-        std::tuple<Node*, Node*> tt = this->splitBySize(pos);
-        Node* t2 = new Node(val_);
+        std::tuple<Node*, Node*> tt = splitBySize(pos);
+        Node* t2 = new Node(val, pri);
         return merge(merge(std::get<0>(tt), t2), std::get<1>(tt));
     }
 
     Node* get(int pos) {
-        int lc = (this->left_ ? this->left_->c_ : 0);
+        int lc = (left_ ? left_->c_ : 0);
         if (pos == lc) {
             return this;
         }
         if (pos < lc) {
-            return this->left_->get(pos);
+            return left_->get(pos);
         } else  {
-            return this->right_->get(pos);
+            return right_->get(pos);
         }
     }
 
     Node* erase(int pos) {
-        std::tuple<Node*, Node*> t = this->splitBySize(pos);
+        std::tuple<Node*, Node*> t = splitBySize(pos);
         if (std::get<1>(t)) {
             std::tuple<Node*, Node*> tr = std::get<1>(t)->splitBySize(1);
             return merge(std::get<0>(t), std::get<1>(tr));
@@ -77,7 +78,7 @@ public:
     }
 
     Node* eraseRegion(int pos, int count) {
-        std::tuple<Node*, Node*> t = this->splitBySize(pos);
+        std::tuple<Node*, Node*> t = splitBySize(pos);
         if (std::get<1>(t)) {
             std::tuple<Node*, Node*> tr = std::get<1>(t)->splitBySize(count);
             return merge(std::get<0>(t), std::get<1>(tr));
@@ -85,8 +86,8 @@ public:
         return std::get<0>(t);
     }
 
-    int sum_Interval_(int f, int t) {
-        std::tuple<Node*, Node*> tn = this->splitBySize(f);
+    int sumInterval(int f, int t) {
+        std::tuple<Node*, Node*> tn = splitBySize(f);
         if (std::get<1>(tn)) {
             std::tuple<Node*, Node*> tnr = std::get<1>(tn)->splitBySize(t - f + 1);
             return std::get<0>(tnr)->sum_;
@@ -96,8 +97,8 @@ public:
 
 private:
     void update() {
-        this->c_ = 1 + (this->right_ ? this->right_->c_ : 0) + (this->left_ ? this->left_->c_ : 0);
-        this->sum_ = this->val_ + (this->right_ ? this->right_->sum_ : 0) + (this->left_ ? this->left_->sum_ : 0);
+        c_ = 1 + (right_ ? right_->c_ : 0) + (left_ ? left_->c_ : 0);
+        sum_ = val_ + (right_ ? right_->sum_ : 0) + (left_ ? left_->sum_ : 0);
     }
 
     Node* merge(Node* t1, Node* t2) {
@@ -115,21 +116,21 @@ private:
     }
    
     std::tuple<Node*, Node*> splitBySize(int k) {
-        int lc = (this->left_ ? this->left_->c_ : 0);
+        int lc = (left_ ? left_->c_ : 0);
         if (k <= lc) {
-            if (this->left_) {
-                std::tuple<Node*, Node*> tl = this->left_->splitBySize(k);
-                this->left_ = std::get<1>(tl);
-                this->update();
+            if (left_) {
+                std::tuple<Node*, Node*> tl = left_->splitBySize(k);
+                left_ = std::get<1>(tl);
+                update();
                 return std::tuple<Node*, Node*> {std::get<0>(tl), this};
             } else {
                 return std::tuple<Node*, Node*> {nullptr, this};
             }
         } else {
-            if (this->right_) {
-                std::tuple<Node*, Node*> tr = this->right_->splitBySize(k - lc - 1);
-                this->right_ = std::get<0>(tr);
-                this->update();
+            if (right_) {
+                std::tuple<Node*, Node*> tr = right_->splitBySize(k - lc - 1);
+                right_ = std::get<0>(tr);
+                update();
                 return std::tuple<Node*, Node*> {this, std::get<1>(tr)};
             } else {
                 return std::tuple<Node*, Node*> {this, nullptr};
@@ -141,48 +142,62 @@ private:
 
 class Treap {
     Node*  root_;
+    std::unordered_map<int, bool> priMap_;
 
 public:
-    Treap():  root_(nullptr) {}
+    Treap(): root_(nullptr) {}
 
     Treap(const Treap& other) {
-        * root_ = *other. root_;
+        root_ = new Node(*other.root_);
+        priMap_ = other.priMap_;
     }
 
-    Treap(Treap&& other):  root_(other. root_) {
-        other. root_ = nullptr;
+    Treap(Treap&& other): root_(other.root_), priMap_(other.priMap_) {
+        other.root_ = nullptr;
     }
 
     Treap& operator=(Treap other) {
-        std::swap( root_, other. root_);
+        if (root_) {
+            delete root_;
+        }
+        std::swap(root_, other.root_);
+        std::swap(priMap_, other.priMap_);
         return *this;
     }
 
     ~Treap() { delete root_; }
     
-    void insert(int val_, int pos) {
-        if ( root_) {
-             root_ =  root_->insert(val_, pos);
+    void insert(int val, int pos) {
+        int pri = -1;
+        while(pri != -1) {
+            int r = rand() % 100000;
+            if (priMap_.find(r) == priMap_.end()) {
+                priMap_[r] = true;
+                pri = r;
+            }
+        }
+        if (root_) {
+            root_ = root_->insert(val, pri, pos);
         } else {
-             root_ = new Node(val_);
+            root_ = new Node(val, pri);
         }
     }
 
     void erase(int pos) {
-        if ( root_) {
-             root_ =  root_->erase(pos);
+        if (root_) {
+            root_ =  root_->erase(pos);
         }
     }
 
     void eraseRegion(int pos, int count) {
-        if ( root_) {
-             root_ =  root_->eraseRegion(pos, count);
+        if (root_) {
+            root_ = root_->eraseRegion(pos, count);
         }
     }
 
-    int sum_(int f, int t) {
-        if ( root_) {
-            return  root_->sum_Interval_(f, t);
+    int sum(int f, int t) {
+        if (root_) {
+            return root_->sumInterval(f, t);
         } else {
             return 0;
         }
@@ -194,7 +209,7 @@ void test1() {
     treap->insert(1, 0);
     treap->insert(0, 0);
     treap->insert(2, 2);
-    assert(1 == treap->sum_(0, 1));
+    assert(1 == treap->sum(0, 1));
 }
 
 void test2() {
@@ -206,7 +221,7 @@ void test2() {
     treap->insert(4, 4);
     treap->insert(5, 5);
     treap->insert(6, 6);
-    assert(5 == treap->sum_(2, 3));
+    assert(5 == treap->sum(2, 3));
 }
 
 void test3() {
@@ -220,7 +235,7 @@ void test3() {
     treap->insert(6, 6);
     treap->erase(2);
     treap->erase(2);
-    assert(4 == treap->sum_(2, 2));
+    assert(4 == treap->sum(2, 2));
 }
 
 void test4() {
@@ -232,7 +247,7 @@ void test4() {
     treap->insert(4, 4);
     treap->insert(5, 5);
     treap->eraseRegion(1, 4);
-    assert(5 == treap->sum_(0, 1));
+    assert(5 == treap->sum(0, 1));
 }
 
 void test5() {
@@ -245,45 +260,83 @@ void test5() {
     treap->insert(3, 2);
     treap->insert(2, 2);
     treap->erase(1);
-    assert(20 == treap->sum_(0, 5));
+    assert(20 == treap->sum(0, 5));
+}
+
+void testTreapCopyCrt() {
+    Treap* treap = new Treap();
+    treap->insert(0, 0);
+    treap->insert(1, 1);
+    Treap copy = *treap;
+    delete treap;
+    assert(1 == copy.sum(0, 1));
+}
+
+void testTreapCopyOperator() {
+    Treap* treap = new Treap();
+    Treap copy{};
+    treap->insert(0, 0);
+    treap->insert(1, 1);
+    copy = *treap;
+    delete treap;
+    assert(1 == copy.sum(0, 1));
+}
+
+void testTreapMoveCrt() {
+    Treap* treap = new Treap();
+    treap->insert(0, 0);
+    treap->insert(1, 1);
+    Treap copy = std::move(*treap);
+    delete treap;
+    assert(1 == copy.sum(0, 1));
+}
+
+void testTreapMoveOperator() {
+    Treap* treap = new Treap();
+    Treap copy{};
+    treap->insert(0, 0);
+    treap->insert(1, 1);
+    copy = std::move(*treap);
+    delete treap;
+    assert(1 == copy.sum(0, 1));
 }
 
 void testCopyOperator() {
-    Node* node = new Node(0);
-    Node* copy = new Node(0);
-    node = node->insert(1, 1);
-    node = node->insert(2, 2);
-    *copy = *node;
-    node = node->erase(1);
-    assert(3 == copy->sum_Interval_(0, 2));
+    Node* node = new Node(0, rand() % 100000);
+    Node copy(0, rand() % 100000);
+    node = node->insert(1, 1, rand() % 100000);
+    node = node->insert(2, 2, rand() % 100000);
+    copy = *node;
+    delete node;
+    assert(3 == copy.sumInterval(0, 2));
 }
 
-void testCopyConstructors() {
-    Node* node = new Node(0);
-    node = node->insert(1, 1);
-    node = node->insert(2, 2);
+void testCopyCrt() {
+    Node* node = new Node(0, rand() % 100000);
+    node = node->insert(1, 1, rand() % 100000);
+    node = node->insert(2, 2, rand() % 100000);
     Node copy = *node;
-    node = node->erase(1);
-    assert(3 == copy.sum_Interval_(0, 2));
+    delete node;
+    assert(3 == copy.sumInterval(0, 2));
 }
 
-void testMoveConstructors() {
-    Node* node = new Node(0);
-    node = node->insert(1, 1);
-    node = node->insert(2, 2);
+void testMoveCrt() {
+    Node* node = new Node(0, rand() % 100000);
+    node = node->insert(1, 1, rand() % 100000);
+    node = node->insert(2, 2, rand() % 100000);
     Node copy = std::move(*node);
-    node = node->erase(1);
-    assert(3 == copy.sum_Interval_(0, 2));
+    delete node;
+    assert(3 == copy.sumInterval(0, 2));
 }
 
 void testMoveOperator() {
-    Node* node = new Node(0);
-    Node* copy = new Node(0);
-    node = node->insert(1, 1);
-    node = node->insert(2, 2);
-    *copy = std::move(*node);
-    node = node->erase(1);
-    assert(3 == copy->sum_Interval_(0, 2));
+    Node* node = new Node(0, rand() % 100000);
+    Node copy(0, rand() % 100000);
+    node = node->insert(1, 1, rand() % 100000);
+    node = node->insert(2, 2, rand() % 100000);
+    copy = std::move(*node);
+    delete node;
+    assert(3 == copy.sumInterval(0, 2));
 }
 
 
@@ -293,8 +346,14 @@ int main() {
     test3();
     test4();
     test5();
+
+    testTreapCopyOperator();
+    testTreapCopyCrt();
+    testTreapMoveOperator();
+    testTreapMoveCrt();
+
     testCopyOperator();
-    testCopyConstructors();
-    testMoveConstructors();
+    testCopyCrt();
+    testMoveCrt();
     testMoveOperator();
 }
