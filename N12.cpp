@@ -35,11 +35,11 @@ public:
             if (current_) {
                 if (current_->right_) {
                     current_ = current_->right_;
-                    while (!current_->left_) {
+                    while (current_->left_) {
                         current_ = current_->left_;
                     }
                 } else {
-                    if (current_->parent_ != nullptr) {
+                    if (current_->parent_) {
                         current_ = current_->parent_;
                     } else {
                         current_ = nullptr;
