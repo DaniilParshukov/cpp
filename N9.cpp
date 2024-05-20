@@ -182,7 +182,7 @@ public:
     
     void insert(const H& val) {
         int pri = -1;
-        while(pri != -1) {
+        while(pri == -1) {
             int r = rand() % 100000;
             if (priMap_.find(r) == priMap_.end()) {
                 priMap_[r] = true;
@@ -198,7 +198,7 @@ public:
 
     void insert(const H& val, int pos) {
         int pri = -1;
-        while(pri != -1) {
+        while(pri == -1) {
             int r = rand() % 100000;
             if (priMap_.find(r) == priMap_.end()) {
                 priMap_[r] = true;

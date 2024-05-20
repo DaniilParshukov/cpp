@@ -40,7 +40,17 @@ public:
                     }
                 } else {
                     if (current_->parent_) {
+                        Node* last = current_;
                         current_ = current_->parent_;
+                        while (current_->right_ == last) {
+                            last = current_;
+                            if (current_->parent_) {
+                                current_ = current_->parent_;
+                            } else {
+                                current_ = nullptr;
+                                break;
+                            }
+                        }
                     } else {
                         current_ = nullptr;
                     }
@@ -253,7 +263,7 @@ public:
     
     void insert(const H& val) {
         int pri = -1;
-        while(pri != -1) {
+        while(pri == -1) {
             int r = rand() % 100000;
             if (priMap_.find(r) == priMap_.end()) {
                 priMap_[r] = true;
@@ -269,7 +279,7 @@ public:
 
     void insert(const H& val, int pos) {
         int pri = -1;
-        while(pri != -1) {
+        while(pri == -1) {
             int r = rand() % 100000;
             if (priMap_.find(r) == priMap_.end()) {
                 priMap_[r] = true;
@@ -473,6 +483,18 @@ void testIterator2() {
     assert(caunt == 3);
 }
 
+void testIterator3() {
+    Treap<int> treap;
+    for (int i = 0; i < 60; i++) {
+        treap.insert(i);
+    }
+    int count = 0;
+    for (int& i : treap) {
+        count += i%2;
+    }
+    assert(count == 30);
+}
+
 void testTreapCopyCrt() {
     Treap<int>* treap = new Treap<int>();
     treap->insert(0, 0);
@@ -520,6 +542,7 @@ int main() {
     test5();
 
     testWithStr();
+    testWithSquareMatrice();
     testWithBool();
     
     testTreapCopyOperator();
@@ -536,4 +559,5 @@ int main() {
 
     testIterator1();
     testIterator2();
+    testIterator3();
 }

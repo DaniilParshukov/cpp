@@ -167,7 +167,7 @@ public:
     
     void insert(int val, int pos) {
         int pri = -1;
-        while(pri != -1) {
+        while(pri == -1) {
             int r = rand() % 100000;
             if (priMap.find(r) == priMap.end()) {
                 priMap[r] = true;
